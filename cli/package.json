@@ -1,0 +1,17 @@
+{
+  "name": "@keysha/cli",
+  "version": "1.0.0",
+  "description": "Keysha Standalone TypeScript CLI",
+  "bin": {
+    "keysha": "./src/index.ts"
+  },
+  "scripts": {
+    "start": "bun run src/index.ts",
+    "build": "bun build ./src/index.ts --compile --outfile keysha",
+    "test": "bun test"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/bun": "latest"
+  }
+}
