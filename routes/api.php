@@ -22,5 +22,6 @@ Route::prefix('v1')->group(function () {
 
         Route::get('projects/{slug}/template', [VaultApiController::class, 'template']);
         Route::get('projects/{slug}/diff', [VaultApiController::class, 'diff']);
+        Route::get('projects/{slug}/export', [VaultApiController::class, 'export']);
     });
 });

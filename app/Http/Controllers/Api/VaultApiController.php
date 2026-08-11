@@ -19,7 +19,7 @@ class VaultApiController extends Controller
     public function whoami(Request $request)
     {
         $user = $request->user();
-        $workspace = $user->personalWorkspace();
+        $workspace = $user->currentWorkspace();
 
         return response()->json([
             'user' => [
@@ -38,7 +38,7 @@ class VaultApiController extends Controller
     public function listProjects(Request $request)
     {
         $user = $request->user();
-        $workspace = $user->personalWorkspace();
+        $workspace = $user->currentWorkspace();
 
         $projects = Project::where('workspace_id', $workspace->id)
             ->with(['environments', 'variables'])
@@ -63,7 +63,7 @@ class VaultApiController extends Controller
         ]);
 
         $user = $request->user();
-        $workspace = $user->personalWorkspace();
+        $workspace = $user->currentWorkspace();
 
         $slug = Str::slug($request->input('name'));
 
@@ -89,7 +89,7 @@ class VaultApiController extends Controller
     public function listVariables(Request $request, string $projectSlug)
     {
         $user = $request->user();
-        $workspace = $user->personalWorkspace();
+        $workspace = $user->currentWorkspace();
 
         $project = Project::where('workspace_id', $workspace->id)
             ->where('slug', $projectSlug)
@@ -123,7 +123,7 @@ class VaultApiController extends Controller
     public function inspectVariable(Request $request, string $projectSlug, string $key)
     {
         $user = $request->user();
-        $workspace = $user->personalWorkspace();
+        $workspace = $user->currentWorkspace();
 
         $project = Project::where('workspace_id', $workspace->id)
             ->where('slug', $projectSlug)
@@ -154,7 +154,7 @@ class VaultApiController extends Controller
         ]);
 
         $user = $request->user();
-        $workspace = $user->personalWorkspace();
+        $workspace = $user->currentWorkspace();
 
         $project = Project::where('workspace_id', $workspace->id)
             ->where('slug', $request->input('project_slug'))
@@ -214,7 +214,11 @@ class VaultApiController extends Controller
     public function getVariableValue(Request $request, string $projectSlug, string $key, VaultEngine $vault, AuditService $audit)
     {
         $user = $request->user();
-        $workspace = $user->personalWorkspace();
+        if ($user->currentAccessToken() && ! $user->tokenCan('secret:reveal') && ! $user->tokenCan('*')) {
+            return response()->json(['error' => 'Forbidden: token lacks secret:reveal capability.'], 403);
+        }
+
+        $workspace = $user->currentWorkspace();
 
         $project = Project::where('workspace_id', $workspace->id)
             ->where('slug', $projectSlug)
@@ -229,10 +233,12 @@ class VaultApiController extends Controller
 
         $binding = EnvironmentBinding::where('environment_id', $env->id)
             ->where('project_variable_id', $var->id)
-            ->firstOrFail();
+            ->first();
 
-        if (! $binding->vaultEntry || ! $binding->vaultEntry->currentVersion) {
-            return response()->json(['error' => 'Not configured'], 404);
+        if (! $binding || ! $binding->vaultEntry || ! $binding->vaultEntry->currentVersion) {
+            return response()->json([
+                'error' => "Variable '{$var->key}' is not configured in the '{$env->slug}' environment yet.",
+            ], 404);
         }
 
         $plaintext = $vault->decryptSecret($binding->vaultEntry->currentVersion, $workspace);
@@ -249,7 +255,7 @@ class VaultApiController extends Controller
     public function template(Request $request, string $projectSlug)
     {
         $user = $request->user();
-        $workspace = $user->personalWorkspace();
+        $workspace = $user->currentWorkspace();
 
         $project = Project::where('workspace_id', $workspace->id)
             ->where('slug', $projectSlug)
@@ -264,7 +270,7 @@ class VaultApiController extends Controller
     public function diff(Request $request, string $projectSlug)
     {
         $user = $request->user();
-        $workspace = $user->personalWorkspace();
+        $workspace = $user->currentWorkspace();
 
         $project = Project::where('workspace_id', $workspace->id)
             ->where('slug', $projectSlug)
@@ -288,5 +294,48 @@ class VaultApiController extends Controller
             'environments' => $envs->map(fn ($e) => $e->slug),
             'diff' => $matrix,
         ]);
+    }
+
+    public function export(Request $request, string $projectSlug, VaultEngine $vault)
+    {
+        $user = $request->user();
+        $workspace = $user->currentWorkspace();
+
+        $project = Project::where('workspace_id', $workspace->id)
+            ->where('slug', $projectSlug)
+            ->firstOrFail();
+
+        $envSlug = $request->query('env', 'development');
+        $env = Environment::where('project_id', $project->id)->where('slug', $envSlug)->firstOrFail();
+
+        $bindings = EnvironmentBinding::where('environment_id', $env->id)
+            ->with(['projectVariable', 'vaultEntry.currentVersion'])
+            ->get();
+
+        $vars = [];
+        foreach ($bindings as $binding) {
+            if ($binding->vaultEntry && $binding->vaultEntry->currentVersion) {
+                $key = $binding->projectVariable->key;
+                $val = $vault->decryptSecret($binding->vaultEntry->currentVersion, $workspace);
+                $vars[$key] = $val;
+            }
+        }
+
+        if ($request->query('format') === 'json') {
+            return response()->json([
+                'project' => $project->slug,
+                'environment' => $env->slug,
+                'variables' => $vars,
+            ]);
+        }
+
+        $lines = [];
+        foreach ($vars as $k => $v) {
+            $needQuotes = str_contains($v, ' ') || str_contains($v, '"') || str_contains($v, '#') || str_contains($v, "\n");
+            $escaped = $needQuotes ? '"'.addcslashes($v, '"\\$').'"' : $v;
+            $lines[] = "{$k}={$escaped}";
+        }
+
+        return response(implode("\n", $lines)."\n", 200)->header('Content-Type', 'text/plain');
     }
 }

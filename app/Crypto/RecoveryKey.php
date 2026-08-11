@@ -42,6 +42,8 @@ class RecoveryKey
         $nonce = random_bytes(SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);
         $encryptedBackup = sodium_crypto_secretbox($masterKey->keyBytes, $nonce, $derivedKey);
 
+        SystemRecovery::query()->delete();
+
         return SystemRecovery::create([
             'master_key_fingerprint' => $masterKey->fingerprint(),
             'encrypted_master_key_backup' => base64_encode($encryptedBackup),

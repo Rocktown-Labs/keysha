@@ -60,7 +60,40 @@ class User extends Authenticatable implements PasskeyUser
         return $this->hasMany(Workspace::class, 'created_by');
     }
 
-    public function personalWorkspace(): ?Workspace
+    public function currentWorkspace(): Workspace
+    {
+        $sessionWorkspaceId = session('current_workspace_id');
+
+        if ($sessionWorkspaceId) {
+            $workspace = Workspace::where('id', $sessionWorkspaceId)->first();
+            if ($workspace && ($workspace->created_by === $this->id || $workspace->members()->where('user_id', $this->id)->exists())) {
+                return $workspace;
+            }
+        }
+
+        return $this->personalWorkspace();
+    }
+
+    public function switchWorkspace(string $workspaceId): bool
+    {
+        $workspace = Workspace::where('id', $workspaceId)->first();
+        if ($workspace && ($workspace->created_by === $this->id || $workspace->members()->where('user_id', $this->id)->exists())) {
+            session(['current_workspace_id' => $workspace->id]);
+
+            return true;
+        }
+
+        return false;
+    }
+
+    public function allWorkspaces()
+    {
+        return Workspace::where('created_by', $this->id)
+            ->orWhereHas('members', fn ($query) => $query->where('user_id', $this->id))
+            ->get();
+    }
+
+    public function personalWorkspace(): Workspace
     {
         return Workspace::where('created_by', $this->id)
             ->where('personal', true)
@@ -78,7 +111,7 @@ class User extends Authenticatable implements PasskeyUser
         }
 
         $workspace = Workspace::create([
-            'name' => "{$this->name}'s Workspace",
+            'name' => "{$this->name}'s Personal Workspace",
             'slug' => Str::slug("{$this->name}-workspace-".Str::random(4)),
             'personal' => true,
             'created_by' => $this->id,

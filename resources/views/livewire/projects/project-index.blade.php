@@ -20,8 +20,47 @@
         </div>
     @endif
 
+    @if (!$hasRecoverySetup)
+        <div class="p-4 rounded-xl bg-amber-950/40 border border-amber-800/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-lg">
+            <div class="flex items-start gap-3">
+                <div class="p-2 rounded-lg bg-amber-900/50 border border-amber-700/50 text-amber-300 shrink-0 mt-0.5 sm:mt-0">
+                    <flux:icon icon="key" class="size-5" />
+                </div>
+                <div>
+                    <h3 class="text-sm font-semibold text-amber-200">First-Time Setup Required: Master Recovery Key</h3>
+                    <p class="text-xs text-amber-300/80 mt-0.5">Your vault master key is active, but an emergency recovery key backup has not been initialized yet. Generate your recovery key now to secure your instance.</p>
+                </div>
+            </div>
+            <a 
+                href="{{ route('settings.recovery') }}" 
+                wire:navigate 
+                class="px-4 py-2 bg-amber-400 hover:bg-amber-300 text-black font-semibold text-xs rounded-lg transition-colors shrink-0 flex items-center gap-1.5 shadow-md"
+            >
+                <span>Generate Recovery Key</span>
+                <flux:icon icon="arrow-right" class="size-3.5" />
+            </a>
+        </div>
+    @endif
+
+    <!-- Principal/CTO Encryption & Security Status Bar -->
+    <div class="bg-zinc-950 border border-zinc-800 rounded-lg p-3 flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
+        <div class="flex items-center gap-4">
+            <span class="text-zinc-500">ENCRYPTION ENGINE:</span>
+            <span class="inline-flex items-center gap-1.5 text-emerald-400">
+                <span class="size-2 rounded-full bg-emerald-400"></span>
+                <span>Sodium Secretbox (XSalsa20-Poly1305)</span>
+            </span>
+        </div>
+
+        <div class="flex items-center gap-4 text-zinc-400">
+            <span>WORKSPACE: <strong class="text-white">{{ $workspace->name }}</strong></span>
+            <span class="text-zinc-600">•</span>
+            <span>PROTECTION: <strong class="text-emerald-400">Zero-Knowledge Envelope</strong></span>
+        </div>
+    </div>
+
     <!-- Projects Table -->
-    <div class="bg-zinc-950 border border-zinc-800 rounded-lg overflow-hidden">
+    <div class="bg-zinc-950 border border-zinc-800 rounded-lg overflow-x-auto">
         @if ($projects->isEmpty())
             <div class="p-12 text-center">
                 <flux:icon icon="folder" class="size-8 mx-auto text-zinc-600 mb-3" />
@@ -35,7 +74,7 @@
                 </button>
             </div>
         @else
-            <table class="w-full text-left text-sm text-zinc-300">
+            <table class="w-full text-left text-sm text-zinc-300 min-w-[720px]">
                 <thead class="bg-zinc-900/50 text-xs uppercase tracking-wider text-zinc-400 border-b border-zinc-800">
                     <tr>
                         <th class="py-3 px-4 font-medium">Project</th>
@@ -58,13 +97,20 @@
                                 @endif
                             </td>
                             <td class="py-3.5 px-4 text-zinc-400">
-                                <div class="flex items-center gap-1.5">
-                                    @foreach ($project->environments as $env)
-                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono bg-zinc-900 border border-zinc-800 text-zinc-300">
-                                            {{ $env->name }}
-                                        </span>
-                                    @endforeach
-                                </div>
+                                @if ($project->environments->count() >= 3)
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-xs font-mono bg-zinc-900 border border-zinc-800 text-zinc-300">
+                                        <span class="size-1.5 rounded-full bg-emerald-400"></span>
+                                        <span>Master (All Envs)</span>
+                                    </span>
+                                @else
+                                    <div class="flex items-center gap-1.5">
+                                        @foreach ($project->environments as $env)
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono bg-zinc-900 border border-zinc-800 text-zinc-300">
+                                                {{ $env->name }}
+                                            </span>
+                                        @endforeach
+                                    </div>
+                                @endif
                             </td>
                             <td class="py-3.5 px-4 text-zinc-400 font-mono text-xs">
                                 {{ $project->variables->count() }} expected

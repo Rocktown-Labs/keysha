@@ -5,15 +5,25 @@
             <p class="text-sm text-zinc-400">Complete immutable audit trail of actions taken in your vault.</p>
         </div>
 
-        <input 
-            type="text" 
-            wire:model.live.debounce.300ms="search" 
-            placeholder="Filter audit events..."
-            class="px-3 py-1.5 bg-zinc-900 border border-zinc-800 rounded-md text-white text-xs placeholder-zinc-600 focus:outline-hidden focus:border-zinc-500"
-        />
+        <div class="flex items-center gap-2">
+            <input 
+                type="text" 
+                wire:model.live.debounce.300ms="search" 
+                placeholder="Filter audit events..."
+                class="px-3 py-1.5 bg-zinc-900 border border-zinc-800 rounded-md text-white text-xs placeholder-zinc-600 focus:outline-hidden focus:border-zinc-500"
+            />
+            <button 
+                wire:click="exportCsv" 
+                class="px-3 py-1.5 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-300 text-xs font-mono rounded-md transition-colors flex items-center gap-1.5 cursor-pointer"
+                title="Export CSV Audit Trail for Compliance"
+            >
+                <flux:icon icon="arrow-down-tray" class="size-3.5 text-emerald-400" />
+                <span>Export CSV</span>
+            </button>
+        </div>
     </div>
 
-    <div class="bg-zinc-950 border border-zinc-800 rounded-lg overflow-hidden">
+    <div class="bg-zinc-950 border border-zinc-800 rounded-lg overflow-x-auto">
         @if ($events->isEmpty())
             <div class="p-12 text-center">
                 <flux:icon icon="clock" class="size-8 mx-auto text-zinc-600 mb-3" />
@@ -21,7 +31,7 @@
                 <p class="text-sm text-zinc-400 mt-1">Actions like variable creation, reveal, copy, and device auth will appear here.</p>
             </div>
         @else
-            <table class="w-full text-left text-sm text-zinc-300">
+            <table class="w-full text-left text-sm text-zinc-300 min-w-[700px]">
                 <thead class="bg-zinc-900/50 text-xs uppercase tracking-wider text-zinc-400 border-b border-zinc-800">
                     <tr>
                         <th class="py-3 px-4 font-medium">Event</th>

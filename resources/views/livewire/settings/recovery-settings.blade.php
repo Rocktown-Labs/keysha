@@ -11,11 +11,61 @@
     @endif
 
     @if ($generatedKey)
-        <div class="p-4 bg-emerald-950/40 border border-emerald-800 rounded-lg space-y-3">
-            <h3 class="text-sm font-semibold text-emerald-400">Save Your Keysha Recovery Key</h3>
-            <p class="text-xs text-zinc-300">Save this key in your password manager (1Password / Bitwarden). Keysha cannot recover this key for you.</p>
-            <div class="p-3 bg-black border border-emerald-900 rounded font-mono text-sm text-emerald-300 select-all">
-                {{ $generatedKey }}
+        <div 
+            x-data="{ copied: false }" 
+            class="p-5 bg-emerald-950/60 border border-emerald-700/80 rounded-xl space-y-3 shadow-lg"
+        >
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <span class="flex size-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <h3 class="text-sm font-semibold text-emerald-300">Save Your Keysha Recovery Key</h3>
+                </div>
+                <span class="px-2 py-0.5 text-[10px] font-mono uppercase bg-emerald-900/60 text-emerald-300 border border-emerald-700/50 rounded">
+                    Action Required
+                </span>
+            </div>
+
+            <p class="text-xs text-zinc-300 leading-relaxed">
+                Save this recovery key in your password manager (1Password, Bitwarden, KeePass). Keysha does not store this key in plaintext and cannot recover it for you.
+            </p>
+
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1">
+                <div 
+                    @click="navigator.clipboard.writeText('{{ $generatedKey }}'); copied = true; setTimeout(() => copied = false, 2500)"
+                    title="Click to copy"
+                    class="flex-1 p-3 bg-black border border-emerald-800/80 rounded-lg font-mono text-sm text-emerald-300 break-all select-all cursor-pointer hover:border-emerald-600 transition-colors flex items-center justify-between group"
+                >
+                    <span>{{ $generatedKey }}</span>
+                    <span class="text-[11px] text-zinc-500 group-hover:text-emerald-400 font-sans ml-2 shrink-0">Click to copy</span>
+                </div>
+
+                <button 
+                    type="button"
+                    @click="navigator.clipboard.writeText('{{ $generatedKey }}'); copied = true; setTimeout(() => copied = false, 2500)"
+                    class="px-4 py-3 bg-emerald-500 hover:bg-emerald-400 text-black font-semibold text-xs rounded-lg transition-colors flex items-center justify-center gap-2 shrink-0 cursor-pointer shadow-md"
+                >
+                    <template x-if="!copied">
+                        <div class="flex items-center gap-1.5">
+                            <flux:icon icon="clipboard-document" class="size-4" />
+                            <span>Copy Key</span>
+                        </div>
+                    </template>
+                    <template x-if="copied">
+                        <div class="flex items-center gap-1.5 font-bold text-black">
+                            <flux:icon icon="check" class="size-4" />
+                            <span>Copied!</span>
+                        </div>
+                    </template>
+                </button>
+
+                <button 
+                    type="button"
+                    wire:click="saveToKeyshaProject"
+                    class="px-4 py-3 bg-zinc-900 hover:bg-zinc-800 text-emerald-400 border border-emerald-800/80 font-semibold text-xs rounded-lg transition-colors flex items-center justify-center gap-2 shrink-0 cursor-pointer shadow-md"
+                >
+                    <flux:icon icon="folder-plus" class="size-4" />
+                    <span>Save to Keysha Project</span>
+                </button>
             </div>
         </div>
     @endif

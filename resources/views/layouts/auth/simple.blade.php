@@ -6,11 +6,11 @@
     <body class="min-h-screen bg-white antialiased dark:bg-linear-to-b dark:from-neutral-950 dark:to-neutral-900">
         <div class="bg-background flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
             <div class="flex w-full max-w-sm flex-col gap-2">
-                <a href="{{ route('home') }}" class="flex flex-col items-center gap-2 font-medium" wire:navigate>
-                    <span class="flex h-9 w-9 mb-1 items-center justify-center rounded-md">
-                        <x-app-logo-icon class="size-9 fill-current text-black dark:text-white" />
+                <a href="{{ route('home') }}" class="flex flex-col items-center gap-3 font-medium mb-2" wire:navigate>
+                    <span class="flex h-14 w-14 items-center justify-center rounded-xl bg-zinc-950 border border-emerald-800/80 text-emerald-400 shadow-xl shadow-emerald-950/60">
+                        <x-app-logo-icon class="size-10" />
                     </span>
-                    <span class="sr-only">{{ config('app.name', 'Laravel') }}</span>
+                    <span class="text-xl font-bold text-white tracking-tight">Keysha</span>
                 </a>
                 <div class="flex flex-col gap-6">
                     {{ $slot }}

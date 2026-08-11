@@ -1,11 +1,98 @@
 import { apiRequest } from "../api";
 import { loadConfig, saveConfig } from "../config";
-import { readFileSync, existsSync } from "fs";
+
+export function normalizeEnv(rawEnv: string | undefined): string {
+  if (!rawEnv) return "production";
+  const clean = rawEnv.trim().toLowerCase();
+  if (clean === "dev" || clean === "development" || clean === "local") return "development";
+  if (clean === "prod" || clean === "production") return "production";
+  if (clean === "prev" || clean === "preview" || clean === "stage" || clean === "staging") return "preview";
+  return clean;
+}
+
+async function resolveTarget(rawKey: string | undefined, flags: Record<string, any>) {
+  const config = loadConfig();
+  let project = flags.project || config.activeProject;
+  let key = rawKey ? rawKey.trim() : undefined;
+
+  // Parse "project/KEY" syntax (e.g., keysha/KEYSHA_RECOVERY_KEY)
+  if (key && key.includes("/")) {
+    const parts = key.split("/");
+    project = parts[0];
+    key = parts.slice(1).join("/");
+  }
+
+  const rawEnv = flags.env || config.activeEnvironment || "production";
+  const env = normalizeEnv(rawEnv);
+
+  // Auto-resolve project by searching workspace projects if key exists in another project
+  if (!flags.project && key) {
+    try {
+      const res = await apiRequest("/projects");
+      if (res.projects && Array.isArray(res.projects)) {
+        if (res.projects.length === 1 && !project) {
+          project = res.projects[0].slug;
+          saveConfig({ ...config, activeProject: project });
+          console.log(`ℹ Auto-selected project: ${res.projects[0].name} (${project})`);
+        } else {
+          for (const p of res.projects) {
+            try {
+              const vRes = await apiRequest(`/projects/${p.slug}/variables?env=${env}`);
+              if (vRes.variables && vRes.variables.some((v: any) => v.key.toUpperCase().includes(key!.toUpperCase()) || key!.toUpperCase().includes(v.key.toUpperCase()))) {
+                project = p.slug;
+                break;
+              }
+            } catch {}
+          }
+        }
+      }
+    } catch {}
+  }
+
+  // Fallback to active project or first project
+  if (!project) {
+    try {
+      const res = await apiRequest("/projects");
+      if (res.projects && res.projects.length > 0) {
+        project = res.projects[0].slug;
+        saveConfig({ ...config, activeProject: project });
+      }
+    } catch {}
+  }
+
+  return {
+    project,
+    key,
+    env,
+  };
+}
+
+async function findMatchingKey(project: string, env: string, targetKey: string): Promise<string> {
+  const cleanTarget = targetKey.toUpperCase().replace(/[^A-Z0-9]/g, "");
+
+  try {
+    const res = await apiRequest(`/projects/${project}/variables?env=${env}`);
+    if (res.variables && Array.isArray(res.variables)) {
+      // 1. Exact case-insensitive match
+      const exactMatch = res.variables.find((v: any) => v.key.toUpperCase() === targetKey.toUpperCase());
+      if (exactMatch) return exactMatch.key;
+
+      // 2. Normalized match (ignoring underscores/hyphens/case)
+      const normMatch = res.variables.find((v: any) => v.key.toUpperCase().replace(/[^A-Z0-9]/g, "") === cleanTarget);
+      if (normMatch) return normMatch.key;
+
+      // 3. Substring match (e.g. recovery_key matches KEYSHA_RECOVERY_KEY)
+      const subMatch = res.variables.find((v: any) => v.key.toUpperCase().includes(targetKey.toUpperCase()) || targetKey.toUpperCase().includes(v.key.toUpperCase()));
+      if (subMatch) return subMatch.key;
+    }
+  } catch {}
+
+  return targetKey;
+}
 
 export async function listCommand(args: string[], flags: Record<string, any>) {
-  const config = loadConfig();
-  const project = flags.project || config.activeProject;
-  const env = flags.env || config.activeEnvironment || "production";
+  const posEnv = args[1] && ["dev", "prod", "prev", "development", "production", "preview", "local", "stage"].includes(args[1].toLowerCase()) ? normalizeEnv(args[1]) : flags.env;
+  const { project, env } = await resolveTarget(undefined, { ...flags, env: posEnv });
 
   if (!project) {
     console.error("❌ No active project specified. Use: keysha use <project-slug> or --project=<slug>");
@@ -33,15 +120,20 @@ export async function listCommand(args: string[], flags: Record<string, any>) {
   }
 }
 
-export async function inspectCommand(key: string, flags: Record<string, any>) {
-  const config = loadConfig();
-  const project = flags.project || config.activeProject;
+export async function inspectCommand(rawKey: string, flags: Record<string, any>) {
+  const { project, key: initialKey } = await resolveTarget(rawKey, flags);
 
   if (!project) {
-    console.error("❌ No active project specified.");
+    console.error("❌ No active project specified. Use: keysha use <project-slug> or --project=<slug>");
     return;
   }
 
+  if (!initialKey) {
+    console.error("Usage: keysha inspect <KEY> [--project=<slug>]");
+    return;
+  }
+
+  const key = await findMatchingKey(project, flags.env || "production", initialKey);
   const res = await apiRequest(`/projects/${project}/variables/${key}`);
 
   if (flags.json) {
@@ -57,20 +149,22 @@ export async function inspectCommand(key: string, flags: Record<string, any>) {
   console.log(`Last Updated:   ${res.updated_at}`);
 }
 
-export async function setCommand(key: string, flags: Record<string, any>) {
-  const config = loadConfig();
-  const project = flags.project || config.activeProject;
-  const env = flags.env || config.activeEnvironment || "production";
+export async function setCommand(args: string[], flags: Record<string, any>) {
+  const rawKey = args[1];
+  const posEnv = args[2] && ["dev", "prod", "prev", "development", "production", "preview"].includes(args[2].toLowerCase()) ? normalizeEnv(args[2]) : flags.env;
+  const { project, key: initialKey, env } = await resolveTarget(rawKey, { ...flags, env: posEnv });
 
   if (!project) {
-    console.error("❌ No active project specified.");
+    console.error("❌ No active project specified. Use: keysha use <project-slug> or --project=<slug>");
     return;
   }
 
-  if (!key) {
-    console.error("Usage: keysha set <KEY>");
+  if (!initialKey) {
+    console.error("Usage: keysha set <KEY> [dev|prev|prod] [--project=<slug>]");
     return;
   }
+
+  const key = await findMatchingKey(project, env, initialKey);
 
   process.stdout.write(`Enter value for ${key} [${project}/${env}]: `);
   const value = await new Promise<string>((resolve) => {
@@ -108,59 +202,77 @@ export async function setCommand(key: string, flags: Record<string, any>) {
   console.log(`✓ Saved variable ${res.key} for ${res.environment}`);
 }
 
-export async function getCommand(key: string, flags: Record<string, any>) {
-  const config = loadConfig();
-  const project = flags.project || config.activeProject;
-  const env = flags.env || config.activeEnvironment || "production";
+export async function getCommand(args: string[], flags: Record<string, any>) {
+  const rawKey = args[1];
+  const posEnv = args[2] && ["dev", "prod", "prev", "development", "production", "preview"].includes(args[2].toLowerCase()) ? normalizeEnv(args[2]) : flags.env;
+  const { project, key: initialKey, env } = await resolveTarget(rawKey, { ...flags, env: posEnv });
 
-  if (!project || !key) {
-    console.error("Usage: keysha get <KEY>");
+  if (!project || !initialKey) {
+    console.error("Usage: keysha get <KEY> [dev|prev|prod] [--project=<slug>]");
     return;
   }
-
-  const res = await apiRequest(`/projects/${project}/variables/${key}/value?env=${env}`);
-
-  // Pure stdout output contract per Section 94
-  process.stdout.write(res.value + "\n");
-}
-
-export async function copyCommand(key: string, flags: Record<string, any>) {
-  const config = loadConfig();
-  const project = flags.project || config.activeProject;
-  const env = flags.env || config.activeEnvironment || "production";
-
-  if (!project || !key) {
-    console.error("Usage: keysha copy <KEY>");
-    return;
-  }
-
-  const res = await apiRequest(`/projects/${project}/variables/${key}/value?env=${env}`);
 
   try {
-    const proc = Bun.spawn(["pbcopy"], { stdin: "pipe" });
-    proc.stdin.write(res.value);
-    proc.stdin.end();
-  } catch {}
-
-  console.log(`✓ Copied ${key} to clipboard`);
+    const key = await findMatchingKey(project, env, initialKey);
+    const res = await apiRequest(`/projects/${project}/variables/${key}/value?env=${env}`);
+    process.stdout.write(res.value + "\n");
+  } catch (err: any) {
+    console.error(`❌ ${err.message || "Could not retrieve variable value."}`);
+  }
 }
 
-export async function templateCommand(flags: Record<string, any>) {
-  const config = loadConfig();
-  const project = flags.project || config.activeProject;
+export async function copyCommand(args: string[], flags: Record<string, any>) {
+  const rawKey = args[1];
+  const posEnv = args[2] && ["dev", "prod", "prev", "development", "production", "preview"].includes(args[2].toLowerCase()) ? normalizeEnv(args[2]) : flags.env;
+  const { project, key: initialKey, env } = await resolveTarget(rawKey, { ...flags, env: posEnv });
+
+  if (!project || !initialKey) {
+    console.error("Usage: keysha copy <KEY> [dev|prev|prod] [--project=<slug>]");
+    return;
+  }
+
+  try {
+    const key = await findMatchingKey(project, env, initialKey);
+    const res = await apiRequest(`/projects/${project}/variables/${key}/value?env=${env}`);
+
+    try {
+      const proc = Bun.spawn(["pbcopy"], { stdin: "pipe" });
+      proc.stdin.write(res.value);
+      proc.stdin.end();
+    } catch {}
+
+    console.log(`✓ Copied ${key} [${env}] to clipboard!`);
+  } catch (err: any) {
+    console.error(`❌ ${err.message || "Could not retrieve variable value."}`);
+  }
+}
+
+export async function templateCommand(args: string[], flags: Record<string, any>) {
+  const { project } = await resolveTarget(undefined, flags);
 
   if (!project) {
     console.error("❌ No active project specified.");
     return;
   }
 
+  const targetFile = args[1] && (args[1].includes(".") || args[1].includes("/")) ? args[1] : (flags.file || undefined);
   const text = await apiRequest(`/projects/${project}/template`);
-  process.stdout.write(text + "\n");
+
+  if (targetFile) {
+    const fs = require("fs");
+    const path = require("path");
+    const fullPath = path.resolve(process.cwd(), targetFile);
+    const dir = path.dirname(fullPath);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(fullPath, text + "\n", "utf-8");
+    console.log(`✓ Created template file ${targetFile} for ${project}`);
+  } else {
+    process.stdout.write(text + "\n");
+  }
 }
 
-export async function diffCommand(flags: Record<string, any>) {
-  const config = loadConfig();
-  const project = flags.project || config.activeProject;
+export async function diffCommand(args: string[], flags: Record<string, any>) {
+  const { project } = await resolveTarget(undefined, flags);
 
   if (!project) {
     console.error("❌ No active project specified.");
@@ -169,17 +281,79 @@ export async function diffCommand(flags: Record<string, any>) {
 
   const res = await apiRequest(`/projects/${project}/diff`);
 
+  let targetEnvs = res.environments as string[];
+  const rawPosEnvs = args.slice(1).filter((a) => !a.startsWith("-"));
+  if (rawPosEnvs.length > 0) {
+    targetEnvs = rawPosEnvs.map((e) => normalizeEnv(e));
+  } else if (flags.targetEnvs && Array.isArray(flags.targetEnvs) && flags.targetEnvs.length > 0) {
+    targetEnvs = flags.targetEnvs.map((e: string) => normalizeEnv(e));
+  }
+
+  const getEnvLabel = (e: string) => {
+    if (e === "development") return "DEV";
+    if (e === "production") return "PROD";
+    if (e === "preview") return "PREV";
+    return e.toUpperCase();
+  };
+
   console.log(`\nEnvironment Comparison for ${res.project}\n`);
-  const envs = res.environments as string[];
-  const header = "VARIABLE".padEnd(32) + envs.map((e) => e.toUpperCase().padEnd(12)).join("");
+  const header = "VARIABLE".padEnd(32) + targetEnvs.map((e) => getEnvLabel(e).padEnd(12)).join("");
   console.log(header);
   console.log("-".repeat(header.length));
 
   for (const row of res.diff) {
     let line = row.key.padEnd(32);
-    for (const env of envs) {
+    for (const env of targetEnvs) {
       line += (row[env] ? "✓" : "✗").padEnd(12);
     }
     console.log(line);
   }
 }
+
+export async function pullCommand(args: string[], flags: Record<string, any>) {
+  const envArg = args[1] && !args[1].includes("/") && !args[1].includes(".") ? args[1] : undefined;
+  const targetFile = args[2] || (args[1] && (args[1].includes("/") || args[1].includes(".")) ? args[1] : ".env");
+  const { project, env } = await resolveTarget(undefined, { ...flags, env: envArg || flags.env || "development" });
+
+  if (!project) {
+    console.error("❌ No active project specified. Use: keysha use <project-slug> or --project=<slug>");
+    return;
+  }
+
+  try {
+    const text = await apiRequest(`/projects/${project}/export?env=${env}`);
+    const fs = require("fs");
+    const path = require("path");
+    const fullPath = path.resolve(process.cwd(), targetFile);
+
+    if (fs.existsSync(fullPath)) {
+      let existingContent = fs.readFileSync(fullPath, "utf-8");
+      const newLines = text.trim().split("\n");
+      let updatedCount = 0;
+
+      for (const line of newLines) {
+        if (!line.includes("=")) continue;
+        const [k] = line.split("=");
+        const regex = new RegExp(`^${k}=.*$`, "m");
+        if (regex.test(existingContent)) {
+          existingContent = existingContent.replace(regex, line);
+        } else {
+          existingContent += (existingContent.endsWith("\n") ? "" : "\n") + line + "\n";
+        }
+        updatedCount++;
+      }
+
+      fs.writeFileSync(fullPath, existingContent, "utf-8");
+      console.log(`✓ Updated ${updatedCount} variables in ${targetFile} [${project}/${env}]`);
+    } else {
+      const dir = path.dirname(fullPath);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(fullPath, text, "utf-8");
+      const count = text.trim().split("\n").filter((l: string) => l.includes("=")).length;
+      console.log(`✓ Exported ${count} variables to ${targetFile} [${project}/${env}]`);
+    }
+  } catch (err: any) {
+    console.error(`❌ ${err.message || "Failed to pull environment variables."}`);
+  }
+}
+

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\DeviceAuthorization;
 use App\Models\User;
+use App\Services\DeviceAuthorizationCode;
 
 class DeviceAuthController extends Controller
 {
@@ -17,7 +18,7 @@ class DeviceAuthController extends Controller
         $userCodeRaw = strtoupper(substr(bin2hex(random_bytes(4)), 0, 4).'-'.substr(bin2hex(random_bytes(4)), 0, 4));
         $deviceCodeRaw = bin2hex(random_bytes(32));
 
-        $userCodeHash = hash('sha256', str_replace('-', '', $userCodeRaw));
+        $userCodeHash = DeviceAuthorizationCode::hash($userCodeRaw);
         $deviceCodeHash = hash('sha256', $deviceCodeRaw);
 
         $authorization = DeviceAuthorization::create([

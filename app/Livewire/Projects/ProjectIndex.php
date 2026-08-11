@@ -3,6 +3,7 @@
 namespace App\Livewire\Projects;
 
 use App\Models\Project;
+use App\Models\SystemRecovery;
 use App\Services\AuditService;
 use Illuminate\Support\Str;
 use Livewire\Component;
@@ -25,7 +26,7 @@ class ProjectIndex extends Component
         $this->validate();
 
         $user = auth()->user();
-        $workspace = $user->personalWorkspace();
+        $workspace = $user->currentWorkspace();
 
         $slug = Str::slug($this->name);
         $count = Project::where('workspace_id', $workspace->id)->where('slug', 'like', "{$slug}%")->count();
@@ -65,7 +66,7 @@ class ProjectIndex extends Component
     public function render()
     {
         $user = auth()->user();
-        $workspace = $user->personalWorkspace();
+        $workspace = $user->currentWorkspace();
 
         $projects = Project::where('workspace_id', $workspace->id)
             ->with(['environments.bindings', 'variables'])
@@ -75,6 +76,7 @@ class ProjectIndex extends Component
         return view('livewire.projects.project-index', [
             'workspace' => $workspace,
             'projects' => $projects,
+            'hasRecoverySetup' => SystemRecovery::exists(),
         ])->layout('layouts.app', ['title' => 'Projects']);
     }
 }
