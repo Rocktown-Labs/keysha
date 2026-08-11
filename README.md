@@ -141,4 +141,4 @@ vendor/bin/pint --dirty --format agent
 
 ## 📄 License
 
-Keysha is open-source software licensed under the [MIT License](LICENSE). Built with ❤️ by [Rocktown Labs](https://rocktownlabs.com).
+Keysha is open-source software licensed under the [GNU AGPL-3.0 License](LICENSE). Built with ❤️ by [Rocktown Labs](https://rocktownlabs.com).

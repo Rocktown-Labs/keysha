@@ -165,4 +165,16 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 - Run tests: `php artisan test --compact` or filter: `php artisan test --compact --filter=testName`.
 - Do NOT delete tests without approval.
 
+=== team workflow rules ===
+
+# Team & Release Workflow Guidelines
+
+1. **Board & Issue Scoping**: Always create or reference a GitHub project board item first, followed by specific issue(s) and pull request(s).
+2. **Issue Linking & Merging**: When creating a PR, reference the target issue (e.g., `Closes #123`). Ensure that merging the PR automatically closes all resolved issue(s).
+3. **Single Commit per PR Update**: Every PR or release pass must be packaged into a clean, unified commit.
+4. **Changelog Maintenance**: Every PR must include an update to `CHANGELOG.md` reflecting the new features, security fixes, or API updates.
+5. **AI Code Contributions & Transparency**:
+   - High-quality human-verified code only — **no low-effort AI slop**.
+   - If AI tools or agents are used to generate or assist with a feature/PR, you MUST attach or link the AI agent conversation/session log artifact in the PR description or commit log for full transparency and auditability.
+
 </laravel-boost-guidelines>
