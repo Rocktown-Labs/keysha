@@ -48,15 +48,15 @@
         <main class="max-w-5xl mx-auto w-full text-center py-12 sm:py-16 space-y-10">
             <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-950 border border-zinc-800 text-xs font-mono text-zinc-400">
                 <span class="size-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span>Open-Source Envelope Encryption Vault & CLI</span>
+                <span>Open-Source Secret Vault & CLI</span>
             </div>
 
             <h1 class="text-4xl sm:text-6xl font-bold tracking-tight text-white max-w-4xl mx-auto leading-tight">
-                Durable configuration & credential vault for developers.
+                Never lose an API key or environment variable again.
             </h1>
 
             <p class="text-zinc-400 text-base sm:text-lg max-w-2xl mx-auto leading-relaxed">
-                Keysha is the canonical source of truth where you can always find your API keys, Stripe price IDs, Resend tokens, and project configs again.
+                Keysha safely stores your Stripe keys, database credentials, and secret tokens in one encrypted vault. Access them instantly from your terminal or web dashboard.
             </p>
 
             <!-- Package Manager Installation Component -->
@@ -91,15 +91,15 @@
                 </div>
 
                 <p class="text-[11px] text-zinc-500 leading-relaxed font-sans">
-                    Install globally using your preferred package manager or standalone script installer. Requires zero external runtime setup.
+                    Install globally with your package manager or shell script. No extra runtime setup required.
                 </p>
 
                 <div class="flex items-center gap-3 pt-1">
                     <a href="/register" class="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-black font-semibold text-xs rounded-md transition-colors">
-                        Create Free Account
+                        Get Started Free
                     </a>
                     <a href="#commands" class="px-4 py-2 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-300 font-medium text-xs rounded-md transition-colors">
-                        View All Commands →
+                        View Commands →
                     </a>
                 </div>
             </div>
@@ -148,8 +148,8 @@
             <div id="commands" class="pt-12 text-left space-y-8 max-w-4xl mx-auto border-t border-zinc-800">
                 <div class="flex items-center justify-between">
                     <div>
-                        <h2 class="text-xl font-bold text-white tracking-tight">CLI Commands & Workflow Reference</h2>
-                        <p class="text-xs text-zinc-400 mt-1">Organized in natural step-by-step order from authentication to local file export.</p>
+                        <h2 class="text-xl font-bold text-white tracking-tight">CLI Command Reference</h2>
+                        <p class="text-xs text-zinc-400 mt-1">Step-by-step commands from login to local file export.</p>
                     </div>
                     <span class="text-xs font-mono text-zinc-500">keysha v1.0.0</span>
                 </div>
