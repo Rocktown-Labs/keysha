@@ -5,7 +5,7 @@
 [![Bun CLI](https://img.shields.io/badge/Bun-CLI_1.0-orange?style=flat-square&logo=bun)](https://bun.sh)
 [![Libsodium Encryption](https://img.shields.io/badge/Crypto-Libsodium_XChaCha20--Poly1305-blue?style=flat-square)](https://php.net/manual/en/book.sodium.php)
 
-**Keysha** is an open-source secret vault for environment variables, API keys, and project tokens. Built with **Laravel 12**, **Livewire 3**, **Flux UI**, and a standalone **Bun CLI**, Keysha keeps your secrets safe and synchronized across Development, Preview, and Production.
+**Keysha** is an open-source secret vault for developers. It securely stores your API keys, Stripe tokens, and environment variables in one encrypted location. Built with **Laravel 12**, **Livewire 3**, **Flux UI**, and a standalone **Bun CLI**, Keysha syncs your secrets safely across Development, Preview, and Production without vendor lock-in.
 
 ---
 
