@@ -1,17 +1,11 @@
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dark">
     <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>Keysha — Developer Configuration & Credentials Vault</title>
-
-        <link rel="icon" href="/favicon.ico" sizes="any">
-
-        @vite(['resources/css/app.css', 'resources/js/app.js'])
+        @include('partials.head')
     </head>
     <body class="bg-black text-white antialiased min-h-screen flex flex-col justify-between p-6 sm:p-12 font-sans">
         <!-- Navigation -->
-        <header class="max-w-6xl mx-auto w-full flex items-center justify-between border-b border-zinc-800 pb-6">
+        <header class="max-w-6xl mx-auto w-full flex items-center justify-between border-b border-zinc-800 pb-6 relative">
             <div class="flex items-center gap-3">
                 <div class="flex aspect-square size-10 items-center justify-center rounded-xl bg-zinc-950 border border-emerald-800/80 text-emerald-400 shadow-md">
                     <x-app-logo-icon class="size-7" />
@@ -24,11 +18,15 @@
                 </div>
             </div>
 
-            <nav class="flex items-center gap-4 text-sm font-medium">
-                <a href="#install" class="text-zinc-400 hover:text-white transition-colors hidden sm:block">Install</a>
-                <a href="#commands" class="text-zinc-400 hover:text-white transition-colors hidden sm:block">Docs</a>
-                <a href="#self-host" class="text-zinc-400 hover:text-white transition-colors hidden sm:block">Self-Host</a>
-                
+            <!-- Centered Navigation Menu -->
+            <nav class="hidden md:flex items-center justify-center gap-8 text-sm font-medium absolute left-1/2 -translate-x-1/2">
+                <a href="#install" class="text-zinc-400 hover:text-white transition-colors">Install</a>
+                <a href="#commands" class="text-zinc-400 hover:text-white transition-colors">Docs</a>
+                <a href="#self-host" class="text-zinc-400 hover:text-white transition-colors">Self-Host</a>
+            </nav>
+
+            <!-- Right-Aligned Action Buttons -->
+            <div class="flex items-center gap-4 text-sm font-medium">
                 @auth
                     <a href="/dashboard" class="px-4 py-2 bg-white text-black hover:bg-zinc-200 rounded-md transition-colors font-semibold">
                         Open Vault Dashboard →
@@ -43,7 +41,7 @@
                         </a>
                     @endif
                 @endauth
-            </nav>
+            </div>
         </header>
 
         <!-- Hero Section -->
